@@ -1,0 +1,332 @@
+# Cross-Sample Metagenomics Analysis Configuration
+# Pipeline Phase 2: Multi-sample comparative and temporal analysis
+
+# =============================================================================
+# INPUT/OUTPUT CONFIGURATION
+# =============================================================================
+
+# Directory containing single-sample pipeline results
+input_directory: "results/single_sample"
+
+# Output directory for cross-sample analysis
+output_directory: "results/cross_sample"
+
+# Sample metadata file (TSV format)
+# Required columns: sample_id, collection_date, site_id, treatment, host_id
+sample_metadata: "data/sample_metadata.tsv"
+
+# Optional: Pre-computed abundance matrices
+abundance_matrix: null  # If null, will be computed from single-sample results
+mag_abundance_matrix: null
+
+# =============================================================================
+# MAG DEREPLICATION SETTINGS
+# =============================================================================
+mag_dereplication:
+  # ANI threshold for clustering MAGs (0.95 = 95% ANI)
+  ani_threshold: 0.95
+  
+  # Minimum alignment fraction for FastANI
+  min_alignment_fraction: 0.65
+  
+  # Quality score weighting (checkm2 completeness - contamination)
+  quality_weight: 0.3
+  
+  # Size weight (favor larger MAGs as representatives)
+  size_weight: 0.2
+  
+  # Threads for FastANI
+  threads: 16
+  
+  # Keep intermediate files
+  keep_intermediate: false
+
+# =============================================================================
+# MACHINE LEARNING CONFIGURATION
+# =============================================================================
+
+# VAE Community Embedding Settings
+vae_settings:
+  # Latent dimension size
+  latent_dim: 32
+  
+  # Hidden layer dimensions
+  hidden_dims: [256, 128, 64]
+  
+  # Training parameters
+  batch_size: 32
+  learning_rate: 0.001
+  num_epochs: 500
+  early_stopping_patience: 50
+  
+  # VAE-specific parameters
+  beta: 1.0  # Beta-VAE weighting
+  dropout_rate: 0.2
+  
+  # Data preprocessing
+  log_transform: true
+  min_abundance_threshold: 0.0001
+  prevalence_threshold: 0.1  # Taxa must be present in >10% of samples
+  
+  # Validation split
+  validation_split: 0.2
+  random_seed: 42
+
+# Isolation Forest Settings
+isolation_forest:
+  # Number of estimators
+  n_estimators: 200
+  
+  # Contamination rate (expected proportion of anomalies)
+  contamination: 0.1
+  
+  # Features to include in anomaly detection
+  features:
+    abundance_based: true
+    vae_embeddings: true
+    diversity_metrics: true
+    novelty_scores: true
+    temporal_features: true
+  
+  # Feature scaling method
+  scaling_method: "robust"  # Options: standard, robust, minmax
+  
+  # Random seed
+  random_seed: 42
+
+# =============================================================================
+# NOVELTY ANALYSIS CONFIGURATION
+# =============================================================================
+pan_novelty:
+  # Minimum number of samples for pan-analysis
+  min_samples: 3
+  
+  # Novelty score thresholds
+  thresholds:
+    low: 0.3
+    medium: 0.6
+    high: 0.8
+  
+  # Emergence detection parameters
+  emergence_detection:
+    min_fold_change: 2.0
+    min_samples_present: 2
+    statistical_test: "mannwhitneyu"  # Options: ttest, mannwhitneyu, wilcoxon
+    p_value_threshold: 0.05
+    multiple_testing_correction: "fdr_bh"
+  
+  # Core novelty definition (present in % of samples)
+  core_novelty_threshold: 0.8
+  
+  # Rare novelty definition (present in < % of samples)
+  rare_novelty_threshold: 0.1
+
+# =============================================================================
+# TEMPORAL ANALYSIS CONFIGURATION
+# =============================================================================
+temporal_analysis:
+  # Enable temporal analysis (requires collection_date in metadata)
+  enabled: true
+  
+  # Time unit for analysis
+  time_unit: "days"  # Options: days, weeks, months
+  
+  # Smoothing parameters
+  smoothing:
+    method: "loess"  # Options: loess, rolling_mean, savgol
+    window_size: 5
+    polynomial_order: 2  # For savgol only
+  
+  # Trend detection
+  trend_detection:
+    method: "mann_kendall"  # Options: mann_kendall, linear_regression
+    significance_threshold: 0.05
+  
+  # Change point detection
+  changepoint_detection:
+    method: "pelt"  # Options: pelt, binseg, window
+    penalty: "BIC"  # Options: BIC, AIC, MBIC
+    min_size: 3
+  
+  # Seasonal decomposition
+  seasonal_decomposition:
+    enabled: true
+    period: null  # Auto-detect if null
+    model: "additive"  # Options: additive, multiplicative
+
+# =============================================================================
+# PATHOGEN DETECTION CONFIGURATION
+# =============================================================================
+pathogen_detection:
+  # Pathogen databases (provide paths or set to null to skip)
+  databases:
+    virulence_factors: "databases/vfdb/VFDB_setB_pro.fas"
+    antibiotic_resistance: "databases/card/protein_homolog_model.fasta"
+    pathogen_genomes: "databases/pathogens/pathogen_genomes.fasta"
+  
+  # BLAST parameters
+  blast_params:
+    evalue: 1e-5
+    identity_threshold: 70
+    coverage_threshold: 50
+    max_targets: 10
+  
+  # Risk scoring weights
+  risk_scoring:
+    novelty_weight: 0.4
+    abundance_weight: 0.3
+    virulence_weight: 0.2
+    resistance_weight: 0.1
+  
+  # Alert thresholds
+  alert_thresholds:
+    low_risk: 0.3
+    medium_risk: 0.6
+    high_risk: 0.8
+  
+  # Known pathogen list (for validation)
+  known_pathogens: "config/known_pathogens.txt"
+
+# =============================================================================
+# COMMUNITY ANALYSIS CONFIGURATION
+# =============================================================================
+community_analysis:
+  # Diversity metrics to calculate
+  diversity_metrics:
+    - "shannon"
+    - "simpson" 
+    - "chao1"
+    - "observed_otus"
+    - "pielou_evenness"
+  
+  # Beta diversity metrics
+  beta_diversity_metrics:
+    - "bray_curtis"
+    - "jaccard"
+    - "euclidean"
+    - "cosine"
+  
+  # Ordination methods
+  ordination_methods:
+    - "PCoA"
+    - "UMAP"
+    - "t-SNE"
+  
+  # Statistical testing
+  statistical_tests:
+    permanova:
+      enabled: true
+      permutations: 999
+      factors: ["site_id", "treatment", "collection_date"]
+    
+    anosim:
+      enabled: true
+      permutations: 999
+    
+    mantel_test:
+      enabled: true
+      permutations: 999
+
+# =============================================================================
+# REPORTING CONFIGURATION
+# =============================================================================
+reporting:
+  # Report format
+  formats: ["html", "pdf"]
+  
+  # Include sections
+  sections:
+    executive_summary: true
+    methodology: true
+    quality_metrics: true
+    diversity_analysis: true
+    novelty_analysis: true
+    temporal_analysis: true
+    pathogen_screening: true
+    ml_analysis: true
+    recommendations: true
+    appendices: true
+  
+  # Visualization settings
+  visualization:
+    dpi: 300
+    figure_format: "png"
+    color_palette: "viridis"
+    theme: "publication"
+  
+  # Interactive plots
+  interactive_plots:
+    enabled: true
+    backend: "plotly"  # Options: plotly, bokeh
+    
+# =============================================================================
+# COMPUTATIONAL RESOURCES
+# =============================================================================
+resources:
+  # Default thread allocation
+  default_threads: 8
+  
+  # Memory limits (GB)
+  memory_limits:
+    vae_training: 32
+    mag_dereplication: 64
+    abundance_calculation: 16
+    report_generation: 8
+  
+  # Temporary directory
+  temp_dir: "/tmp"
+  
+  # Keep intermediate files
+  keep_intermediate: false
+
+# =============================================================================
+# QUALITY CONTROL
+# =============================================================================
+quality_control:
+  # Minimum number of samples for analysis
+  min_samples: 3
+  
+  # Minimum sequencing depth per sample
+  min_reads_per_sample: 100000
+  
+  # Maximum missing data percentage
+  max_missing_data: 0.5
+  
+  # Outlier detection and removal
+  outlier_detection:
+    enabled: true
+    method: "isolation_forest"
+    contamination: 0.05
+  
+  # Batch effect correction
+  batch_correction:
+    enabled: false
+    method: "combat"  # Options: combat, limma
+    batch_variable: "sequencing_run"
+
+# =============================================================================
+# ADVANCED SETTINGS
+# =============================================================================
+advanced:
+  # Reproducibility
+  random_seed: 42
+  
+  # Logging level
+  log_level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR
+  
+  # Checkpoint saving
+  checkpoints:
+    enabled: true
+    frequency: "step"  # Options: step, time
+  
+  # Performance monitoring
+  performance_monitoring:
+    enabled: true
+    profile_memory: true
+    profile_time: true
+  
+  # Experimental features
+  experimental:
+    graph_neural_networks: false
+    federated_learning: false
+    real_time_processing: false

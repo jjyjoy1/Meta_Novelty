@@ -1,0 +1,347 @@
+# =============================================================================
+# 🧬 Metagenomics Pipeline - Phase 1 Configuration
+# Single-Sample Processing Configuration
+# =============================================================================
+
+# Sample information
+samples:
+  # Example samples - modify according to your data
+  sample1: "data/raw/sample1"
+  sample2: "data/raw/sample2"
+  # Add more samples as needed
+
+# Input/Output directories
+directories:
+  raw_data: "data/raw"
+  results: "results"
+  temp: "temp"
+  logs: "logs"
+  databases: "databases"
+
+# =============================================================================
+# Quality Control Parameters
+# =============================================================================
+quality_control:
+  # FastQC parameters
+  fastqc:
+    threads: 4
+    memory: "8G"
+  
+  # fastp parameters for trimming
+  fastp:
+    qualified_quality_phred: 20
+    unqualified_percent_limit: 40
+    length_required: 50
+    detect_adapter_for_pe: true
+    correction: true
+    threads: 8
+
+# =============================================================================
+# Assembly Parameters
+# =============================================================================
+assembly:
+  # MetaSPAdes parameters
+  metaspades:
+    threads: 16
+    memory: "128G"
+    k_list: "21,33,55,77"
+    meta: true
+    only_assembler: false
+    
+  # Assembly quality thresholds
+  quality_filters:
+    min_contig_length: 1000
+    min_coverage: 3.0
+    max_contamination: 10.0
+
+# =============================================================================
+# Binning Parameters
+# =============================================================================
+binning:
+  # Multi-algorithm binning approach
+  algorithms:
+    metabat2:
+      enabled: true
+      min_contig_length: 2500
+      threads: 8
+      
+    maxbin2:
+      enabled: true
+      min_contig_length: 1000
+      threads: 8
+      
+    concoct:
+      enabled: true
+      chunk_size: 10000
+      overlap_size: 0
+      threads: 8
+  
+  # DAS Tool for bin refinement
+  dastool:
+    enabled: true
+    threads: 8
+    score_threshold: 0.5
+    duplicate_penalty: 0.6
+    
+  # Bin quality assessment
+  checkm:
+    threads: 8
+    reduced_tree: false
+    
+  quality_thresholds:
+    min_completeness: 50.0
+    max_contamination: 10.0
+    high_quality_completeness: 90.0
+    high_quality_contamination: 5.0
+
+# =============================================================================
+# Taxonomy Assignment Parameters
+# =============================================================================
+taxonomy:
+  # GTDB-Tk parameters
+  gtdbtk:
+    threads: 16
+    memory: "64G"
+    database_path: "databases/gtdb"
+    pplacer_threads: 1
+    
+  # Additional taxonomy tools
+  kraken2:
+    enabled: true
+    database: "databases/kraken2"
+    threads: 8
+    confidence: 0.1
+
+# =============================================================================
+# Novelty Detection Parameters
+# =============================================================================
+novelty_detection:
+  # Homology-based detection
+  homology:
+    # DIAMOND BLAST parameters
+    diamond:
+      database: "databases/ncbi_nr/nr.dmnd"
+      evalue: 1e-5
+      max_target_seqs: 25
+      threads: 16
+      block_size: 2
+      index_chunks: 4
+      
+    # Additional databases for comprehensive search
+    databases:
+      ncbi_nt: "databases/ncbi_nt/nt"
+      refseq: "databases/refseq/refseq"
+      uniprot: "databases/uniprot/uniref90"
+      
+    # Novelty scoring thresholds
+    thresholds:
+      high_novelty: 30.0    # < 30% identity = high novelty
+      medium_novelty: 70.0  # 30-70% identity = medium novelty
+      low_novelty: 90.0     # 70-90% identity = low novelty
+      # > 90% identity = known sequence
+      
+  # ML-based detection
+  machine_learning:
+    # DNABert parameters
+    dnabert:
+      model_name: "zhihan1996/DNA_bert_6"
+      max_sequence_length: 512
+      batch_size: 32
+      device: "cuda"  # Use "cpu" if no GPU available
+      
+    # Isolation Forest parameters
+    isolation_forest:
+      n_estimators: 200
+      contamination: 0.1
+      random_state: 42
+      n_jobs: 8
+      
+    # Sequence preprocessing
+    preprocessing:
+      min_length: 500
+      max_length: 10000
+      overlap_size: 256
+      
+  # Combined scoring
+  integration:
+    homology_weight: 0.4
+    ml_weight: 0.6
+    confidence_boost: 0.2
+    agreement_threshold: 0.1
+
+# =============================================================================
+# Abundance Calculation Parameters
+# =============================================================================
+abundance:
+  # Read mapping parameters
+  mapping:
+    # BWA-MEM parameters
+    bwa:
+      threads: 16
+      mark_shorter_splits: true
+      
+    # Bowtie2 parameters (alternative)
+    bowtie2:
+      threads: 16
+      very_sensitive: true
+      
+  # Coverage calculation
+  coverage:
+    # Minimum mapping quality
+    min_mapq: 10
+    # Minimum base quality
+    min_baseq: 20
+    # Coverage calculation method
+    method: "tpm"  # Options: tpm, rpkm, raw_counts
+    
+  # Normalization methods
+  normalization:
+    # Total sum scaling
+    tss: true
+    # Relative log expression
+    rle: false
+    # Centered log ratio
+    clr: false
+
+# =============================================================================
+# Computational Resources
+# =============================================================================
+resources:
+  # Default resource allocation
+  default:
+    threads: 4
+    memory: "16G"
+    time: "24:00:00"
+    
+  # High-memory processes
+  high_memory:
+    threads: 8
+    memory: "64G"
+    time: "48:00:00"
+    
+  # High-CPU processes
+  high_cpu:
+    threads: 32
+    memory: "32G"
+    time: "24:00:00"
+    
+  # GPU processes
+  gpu:
+    threads: 4
+    memory: "32G"
+    time: "12:00:00"
+    gpus: 1
+
+# =============================================================================
+# Database Paths
+# =============================================================================
+databases:
+  # Reference databases
+  ncbi_nr: "databases/ncbi_nr/nr.dmnd"
+  ncbi_nt: "databases/ncbi_nt/nt"
+  gtdb: "databases/gtdb"
+  kraken2: "databases/kraken2"
+  checkm: "databases/checkm"
+  
+  # Functional databases
+  kegg: "databases/kegg"
+  cog: "databases/cog"
+  pfam: "databases/pfam"
+
+# =============================================================================
+# Tool Versions and Paths
+# =============================================================================
+tools:
+  # Quality control
+  fastqc: "fastqc"
+  fastp: "fastp"
+  
+  # Assembly
+  metaspades: "metaspades.py"
+  
+  # Binning
+  metabat2: "metabat2"
+  maxbin2: "run_MaxBin.pl"
+  concoct: "concoct"
+  dastool: "DAS_Tool"
+  checkm: "checkm"
+  
+  # Taxonomy
+  gtdbtk: "gtdbtk"
+  kraken2: "kraken2"
+  
+  # Alignment and mapping
+  diamond: "diamond"
+  bwa: "bwa"
+  bowtie2: "bowtie2"
+  samtools: "samtools"
+  
+  # Analysis tools
+  python: "python"
+  R: "Rscript"
+
+# =============================================================================
+# Output Configuration
+# =============================================================================
+output:
+  # File formats
+  formats:
+    assembly: "fasta"
+    abundance: "tsv"
+    taxonomy: "tsv"
+    novelty: "tsv"
+    
+  # Compression
+  compress_intermediates: true
+  compression_level: 6
+  
+  # Visualization
+  plots:
+    format: "png"
+    dpi: 300
+    width: 12
+    height: 8
+
+# =============================================================================
+# Advanced Options
+# =============================================================================
+advanced:
+  # Checkpointing
+  enable_checkpoints: true
+  checkpoint_interval: "4h"
+  
+  # Parallel processing
+  max_parallel_jobs: 10
+  
+  # Error handling
+  retry_failed_jobs: true
+  max_retries: 3
+  
+  # Cleanup
+  cleanup_temp_files: true
+  keep_intermediate_files: false
+  
+  # Logging
+  log_level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR
+  detailed_logs: true
+
+# =============================================================================
+# Validation and Quality Control
+# =============================================================================
+validation:
+  # Input validation
+  check_input_integrity: true
+  min_read_pairs: 1000
+  
+  # Assembly validation
+  min_assembly_size: 100000  # 100kb minimum total assembly size
+  max_n50_ratio: 0.1         # Maximum N50/assembly_size ratio
+  
+  # Binning validation
+  min_bins_expected: 5
+  max_bins_expected: 500
+  
+  # Output validation
+  check_output_integrity: true
+  validate_file_formats: true
+
