@@ -2,6 +2,8 @@
 
 This Snakemake pipeline is designed for comprehensive analysis of NGS data to detect and characterize novel bacterial and viral pathogens. The pipeline integrates multiple methods for assembly, taxonomic classification, viral detection, and anomaly detection using embedding models.
 
+If you want to explore this repo structure, you can visit Deepwiki website, https://deepwiki.com/jjyjoy1/Meta_Novelty. 
+
 ## Overview
 
 The pipeline is organized into several modules:
